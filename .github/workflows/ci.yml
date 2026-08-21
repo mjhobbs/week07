@@ -122,7 +122,7 @@ jobs:
         run: npm ci
 
       - name: Run Vitest
-        run: vitest run --coverage
+        run: npm run --coverage
 
 
   # =========================================================
