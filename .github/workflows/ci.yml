@@ -209,18 +209,14 @@ jobs:
     runs-on: self-hosted
 
     steps:
-deploy-staging:
-  runs-on: self-hosted
+      - name: Debug runner
+        run: |
+          hostname
+          pwd
+          whoami
+          docker version
+          docker compose version
 
-  steps:
-    - name: Debug runner
-      run: |
-        hostname
-        pwd
-        whoami
-        docker version
-        docker compose version
-        
       - name: Azure Login
         uses: azure/login@v2
         with:
