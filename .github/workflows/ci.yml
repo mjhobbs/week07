@@ -201,3 +201,28 @@ jobs:
         run: |
           docker push \
             ${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.image }}:latest
+
+deploy-staging:
+  name: Deploy to Staging
+
+  needs: build_and_push
+  runs-on: self-hosted
+
+  steps:
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to ACR
+      run: az acr login --name ${{ vars.ACR_LOGIN_SERVER }}
+
+    - name: Pull images
+      run: docker compose pull 
+
+    - name: Deploy staging
+      run: docker compose up -d
+
+
+
