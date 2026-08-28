@@ -202,34 +202,81 @@ jobs:
           docker push \
             ${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.image }}:latest
 
-  deploy-staging:
-    name: Deploy to Staging
+  # deploy-staging:
+  #   name: Deploy to Staging
 
-    needs: build-and-push
-    runs-on: self-hosted
+  #   needs: build-and-push
+  #   runs-on: self-hosted
+
+  #   steps:
+  #     - name: Debug runner
+  #       run: |
+  #         hostname
+  #         pwd
+  #         whoami
+  #         docker version
+  #         docker compose version
+
+  #     - name: Azure Login
+  #       uses: azure/login@v2
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+  #     - name: Login to ACR
+  #       run: az acr login --name ${{ vars.ACR_LOGIN_SERVER }}
+
+  #     - name: Pull images
+  #       run: docker compose pull 
+
+  #     - name: Deploy staging
+  #       run: docker compose up -d
+
+  deploy-staging:
+    name: Deploy to AKS Staging
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-push
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    strategy:
+      matrix:
+        include:
+          - service: frontend
+            deployment: koalatech-frontend
+          - service: user-service
+            deployment: koalatech-user-service
+          - service: student-service
+            deployment: koalatech-student-service
+          - service: lecturer-service
+            deployment: koalatech-lecturer-service
+          - service: course-service
+            deployment: koalatech-course-service
+          - service: enrollment-service
+            deployment: koalatech-enrollment-service
 
     steps:
-      - name: Debug runner
-        run: |
-          hostname
-          pwd
-          whoami
-          docker version
-          docker compose version
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Azure Login
+      - name: Login to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Login to ACR
-        run: az acr login --name ${{ vars.ACR_LOGIN_SERVER }}
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group koalatech-staging-rg \
+            --name koalatech-staging-aks \
+            --overwrite-existing
 
-      - name: Pull images
-        run: docker compose pull 
+      - name: Set image tag on deployment
+        run: |
+          kubectl set image deployment/${{ matrix.deployment }} \
+            ${{ matrix.deployment }}=${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.deployment }}:${{ github.sha }} \
+            -n staging
 
-      - name: Deploy staging
-        run: docker compose up -d
-
-
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/${{ matrix.deployment }} -n staging --timeout=120s
 
